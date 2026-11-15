@@ -318,3 +318,26 @@ button:disabled, select:disabled { cursor: wait; opacity: .65; }
   .layout { flex-direction: column; }
   .bank-panel { position: static; width: 100%; }
 }
+
+/* Repères de zéro facultatifs, sans nouveau type de contrôle. */
+.fader-zero-mark {
+  position: absolute;
+  right: 1px;
+  left: 1px;
+  height: 2px;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.knob-zero-mark {
+  position: absolute;
+  top: -5px;
+  left: calc(50% - 1px);
+  width: 2px;
+  height: 7px;
+  background: var(--accent);
+  border-radius: 1px;
+  transform-origin: 1px 34px;
+  pointer-events: none;
+}

@@ -321,5 +321,90 @@
         ]
       }
     ]
+  },
+  {
+  "id": "demo_multiselect",
+  "name": "Démonstration multiselect",
+  "template": [
+    {
+      "title": "Oscillateurs",
+      "controls": [
+        {
+          "name": "active_waves",
+          "display_name": "Oscillateurs actifs",
+          "type": "multiselect",
+          "values": [
+            "Saw",
+            "Square",
+            "Triangle",
+            "Noise"
+          ],
+          "default": [
+            "Saw",
+            "Square"
+          ],
+          "inline": false
+        },
+        {
+          "name": "osc_level",
+          "display_name": "Niveau",
+          "type": "knob",
+          "values": []
+        }
+      ]
+    }
+  ]
+},
+{
+    "id": "exemple_reglages_numeriques",
+    "name": "Exemple – contrôles numériques",
+    "template": [
+      {
+        "title": "Oscillator",
+        "controls": [
+          {
+            "name": "osc_tune",
+            "display_name": "Tune",
+            "type": "knob",
+            "min": -12,
+            "max": 12,
+            "step": 1,
+            "default": 0,
+            "unit": "st",
+            "center": true
+          },
+          {
+            "name": "osc_octave",
+            "display_name": "Octave",
+            "type": "knob",
+            "min": -2,
+            "max": 2,
+            "step": 1,
+            "default": 0,
+            "center": true
+          }
+        ]
+      },
+      {
+        "title": "Levels",
+        "controls": [
+          {
+            "name": "mix_level",
+            "display_name": "Mix",
+            "type": "fader",
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "default": 50,
+            "unit": "%"
+          },
+          {
+            "name": "old_style",
+            "display_name": "Legacy 0–10",
+            "type": "knob"
+          }
+        ]
+      }
+    ]
   }
 ]

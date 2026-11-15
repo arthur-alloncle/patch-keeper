@@ -31,12 +31,61 @@ function createElement(tag, className, text) {
   return element;
 }
 
-function clamp(value) {
-  return Math.min(10, Math.max(0, Math.round(value * 10) / 10));
+// Propriétés communes aux potentiomètres et faders.
+// Les valeurs historiques (0–10, pas de 0.1) restent implicites.
+function getNumericConfig(control) {
+  return {
+    min: control.min ?? 0,
+    max: control.max ?? 10,
+    step: control.step ?? 0.1,
+    defaultValue: control.default ?? control.min ?? 0,
+    unit: control.unit ?? '',
+    center: control.center ?? false,
+  };
 }
 
-function formatValue(value) {
-  return Number(value).toFixed(1);
+function decimalPlaces(value) {
+  const str = String(value).toLowerCase();
+  if (str.includes('e-')) {
+    const [mantissa, exponent] = str.split('e-');
+    return Math.min(10, Number(exponent) + (mantissa.split('.')[1]?.length || 0));
+  }
+  return Math.min(10, str.split('.')[1]?.length || 0);
+}
+
+function normalizeNumericValue(control, rawValue) {
+  const { min, max, step, defaultValue } = getNumericConfig(control);
+  const invalid = rawValue === undefined || rawValue === null ||
+    typeof rawValue === 'boolean' ||
+    (typeof rawValue === 'string' && rawValue.trim() === '');
+  const parsed = invalid ? NaN : Number(rawValue);
+  const number = Number.isFinite(parsed) ? parsed : defaultValue;
+
+  if (number <= min) return min;
+  if (number >= max) return max;
+
+  const stepsFromMin = (number - min) / step;
+  // Compense les erreurs d'arrondi binaire sur les demi-pas (ex. 9.95 / 0.1).
+  const tickCount = Math.round(stepsFromMin + Number.EPSILON * Math.max(1, Math.abs(stepsFromMin)) * 2);
+  const snapped = min + tickCount * step;
+  const precision = Math.max(decimalPlaces(min), decimalPlaces(max), decimalPlaces(step));
+  return Math.max(min, Math.min(max, Number(snapped.toFixed(precision))));
+}
+
+function formatNumericValue(control, value) {
+  const { min, max, step, unit } = getNumericConfig(control);
+  const precision = Math.max(decimalPlaces(min), decimalPlaces(max), decimalPlaces(step));
+  return `${value.toFixed(precision)}${unit ? ` ${unit}` : ''}`;
+}
+
+function relativePosition(control, value) {
+  const { min, max } = getNumericConfig(control);
+  return (value - min) / (max - min);
+}
+
+function supportsZeroMark(control) {
+  const { min, max, center } = getNumericConfig(control);
+  return center && min <= 0 && max >= 0;
 }
 
 function showToast(message, duration = 3000) {
@@ -82,8 +131,13 @@ function persist() {
 function createDefaultState(templateControls) {
   return Object.fromEntries(templateControls.map((control) => {
     if (control.type === 'select') return [control.name, control.values[0]];
+    if (control.type === 'multiselect') {
+      // Chaque option est désactivée par défaut, sauf si un tableau default est fourni.
+      const selected = Array.isArray(control.default) ? control.default : [];
+      return [control.name, control.values.filter((value) => selected.includes(value))];
+    }
     if (control.type === 'toggle') return [control.name, false];
-    return [control.name, 0];
+    return [control.name, normalizeNumericValue(control, getNumericConfig(control).defaultValue)];
   }));
 }
 
@@ -125,12 +179,38 @@ function validateSynths(data) {
         }
         controlNames.add(control.name);
 
-        if (!['knob', 'fader', 'select', 'toggle'].includes(control.type)) {
+        if (!['knob', 'fader', 'select', 'multiselect', 'toggle'].includes(control.type)) {
           throw new Error(`Type "${control.type}" non reconnu pour ${control.name}.`);
         }
-        if (control.type === 'select' &&
-            (!Array.isArray(control.values) || control.values.length === 0)) {
-          throw new Error(`Le contrôle select "${control.name}" doit avoir au moins une valeur.`);
+        if (['select', 'multiselect'].includes(control.type)) {
+          if (!Array.isArray(control.values) || control.values.length === 0 ||
+              control.values.some((value) => typeof value !== 'string') ||
+              new Set(control.values).size !== control.values.length) {
+            throw new Error(`Le contrôle ${control.type} "${control.name}" doit proposer des chaînes uniques dans values.`);
+          }
+        }
+        if (control.type === 'multiselect' && control.default !== undefined &&
+            (!Array.isArray(control.default) ||
+             control.default.some((value) => !control.values.includes(value)))) {
+          throw new Error(`Le défaut du multiselect "${control.name}" doit être un tableau de valeurs autorisées.`);
+        }
+        if (['knob', 'fader'].includes(control.type)) {
+          for (const key of ['min', 'max', 'step', 'default']) {
+            if (control[key] !== undefined &&
+                (typeof control[key] !== 'number' || !Number.isFinite(control[key]))) {
+              throw new Error(`Le champ "${key}" de "${control.name}" doit être un nombre fini.`);
+            }
+          }
+          const { min, max, step, defaultValue } = getNumericConfig(control);
+          if (min >= max || step <= 0 || defaultValue < min || defaultValue > max) {
+            throw new Error(`Plage, pas ou défaut invalide pour "${control.name}" (min < max, step > 0, default dans la plage).`);
+          }
+          if (control.unit !== undefined && typeof control.unit !== 'string') {
+            throw new Error(`Le champ "unit" de "${control.name}" doit être une chaîne.`);
+          }
+          if (control.center !== undefined && typeof control.center !== 'boolean') {
+            throw new Error(`Le champ "center" de "${control.name}" doit être un booléen.`);
+          }
         }
       });
     });
@@ -155,42 +235,55 @@ function populateSynthPicker() {
   elements.synthSelect.disabled = false;
 }
 
-function configureSlider(element, label, onIncrement) {
+function configureSlider(element, control, onChange) {
+  const { min, max, step } = getNumericConfig(control);
   element.tabIndex = 0;
   element.setAttribute('role', 'slider');
-  element.setAttribute('aria-label', label);
-  element.setAttribute('aria-valuemin', '0');
-  element.setAttribute('aria-valuemax', '10');
+  element.setAttribute('aria-label', control.display_name || control.name);
+  element.setAttribute('aria-valuemin', String(min));
+  element.setAttribute('aria-valuemax', String(max));
 
   element.addEventListener('keydown', (event) => {
     const increments = {
-      ArrowUp: 0.1,
-      ArrowRight: 0.1,
-      ArrowDown: -0.1,
-      ArrowLeft: -0.1,
-      PageUp: 1,
-      PageDown: -1,
+      ArrowUp: step,
+      ArrowRight: step,
+      ArrowDown: -step,
+      ArrowLeft: -step,
+      PageUp: step * 10,
+      PageDown: -step * 10,
     };
+    if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      onChange(event.key === 'Home' ? min : max);
+      return;
+    }
     const increment = increments[event.key];
     if (increment === undefined) return;
-
     event.preventDefault();
-    onIncrement(increment);
+    onChange(state[control.name] + increment);
   });
 }
 
 function buildFader(control, wrapper, valueElement) {
+  const { min, max } = getNumericConfig(control);
   const track = createElement('div', 'fader-track');
   const cap = createElement('div', 'fader-cap');
   track.append(cap);
 
-  configureSlider(track, control.display_name, (increment) => {
-    setControlValue(control.name, clamp(state[control.name] + increment));
-  });
+  if (supportsZeroMark(control)) {
+    const zeroMark = createElement('span', 'fader-zero-mark');
+    zeroMark.style.bottom = `calc((100% - 30px) * ${relativePosition(control, 0)} + 15px)`;
+    zeroMark.setAttribute('aria-hidden', 'true');
+    track.append(zeroMark);
+  }
+
+  configureSlider(track, control, (value) => setControlValue(control.name, value));
 
   const valueFromPointer = (clientY) => {
     const bounds = track.getBoundingClientRect();
-    return clamp((1 - (clientY - bounds.top - 15) / (bounds.height - 30)) * 10);
+    const position = Math.max(0, Math.min(1,
+      1 - (clientY - bounds.top - 15) / (bounds.height - 30)));
+    return min + position * (max - min);
   };
 
   track.addEventListener('pointerdown', (event) => {
@@ -205,22 +298,29 @@ function buildFader(control, wrapper, valueElement) {
   });
 
   control.update = (value) => {
-    cap.style.bottom = `calc((100% - 30px) * ${value / 10})`;
-    valueElement.textContent = formatValue(value);
+    cap.style.bottom = `calc((100% - 30px) * ${relativePosition(control, value)})`;
+    valueElement.textContent = formatNumericValue(control, value);
     track.setAttribute('aria-valuenow', String(value));
+    track.setAttribute('aria-valuetext', formatNumericValue(control, value));
   };
 
   wrapper.append(track, valueElement);
 }
 
 function buildKnob(control, wrapper, valueElement) {
+  const { min, max } = getNumericConfig(control);
   const knob = createElement('div', 'knob');
   const indicator = createElement('i', 'knob-indicator');
   knob.append(indicator);
 
-  configureSlider(knob, control.display_name, (increment) => {
-    setControlValue(control.name, clamp(state[control.name] + increment));
-  });
+  if (supportsZeroMark(control)) {
+    const zeroMark = createElement('span', 'knob-zero-mark');
+    zeroMark.style.transform = `rotate(${-135 + relativePosition(control, 0) * 270}deg)`;
+    zeroMark.setAttribute('aria-hidden', 'true');
+    knob.append(zeroMark);
+  }
+
+  configureSlider(knob, control, (value) => setControlValue(control.name, value));
 
   let startY = 0;
   let startValue = 0;
@@ -235,40 +335,59 @@ function buildKnob(control, wrapper, valueElement) {
     if (knob.hasPointerCapture(event.pointerId)) {
       setControlValue(
         control.name,
-        clamp(startValue + (startY - event.clientY) / 20),
+        startValue + (startY - event.clientY) * (max - min) / 200,
       );
     }
   });
 
   control.update = (value) => {
-    indicator.style.transform = `rotate(${-135 + value * 27}deg)`;
-    valueElement.textContent = formatValue(value);
+    indicator.style.transform = `rotate(${-135 + relativePosition(control, value) * 270}deg)`;
+    valueElement.textContent = formatNumericValue(control, value);
     knob.setAttribute('aria-valuenow', String(value));
+    knob.setAttribute('aria-valuetext', formatNumericValue(control, value));
   };
 
   wrapper.append(knob, valueElement);
 }
 
 function buildOptions(control, wrapper) {
+  const isMultiple = control.type === 'multiselect';
   const values = control.type === 'toggle'
     ? [['Off', false], ['On', true]]
     : control.values.map((value) => [value, value]);
 
-  const optionsElement = createElement('div', 'options');
+  const optionsElement = createElement('div',
+    `options${control.inline ? ' options--inline' : ''}`);
+  optionsElement.setAttribute('role', 'group');
+  optionsElement.setAttribute('aria-label', control.display_name || control.name);
   const buttons = [];
 
   values.forEach(([label, value]) => {
     const button = createElement('button', '', label);
     button.type = 'button';
     button.setAttribute('aria-pressed', 'false');
-    button.addEventListener('click', () => setControlValue(control.name, value));
+    button.addEventListener('click', () => {
+      if (!isMultiple) {
+        setControlValue(control.name, value);
+        return;
+      }
+
+      const selected = state[control.name];
+      const nextValues = selected.includes(value)
+        ? selected.filter((item) => item !== value)
+        : [...selected, value];
+      // Conserver un ordre stable pour le JSON, quel que soit l'ordre des clics.
+      setControlValue(control.name,
+        control.values.filter((item) => nextValues.includes(item)));
+    });
     buttons.push({ button, value });
     optionsElement.append(button);
   });
 
   control.update = (value) => {
     buttons.forEach(({ button, value: optionValue }) => {
-      button.setAttribute('aria-pressed', String(optionValue === value));
+      const pressed = isMultiple ? value.includes(optionValue) : optionValue === value;
+      button.setAttribute('aria-pressed', String(pressed));
     });
   };
 
@@ -285,10 +404,6 @@ function buildControl(control) {
   } else if (control.type === 'knob') {
     buildKnob(control, wrapper, value);
   } else {
-    if (control.type === 'select' && control.values.length > 2) {
-      // Le groupe de boutons reste volontairement cohérent avec l'interface existante.
-      wrapper.classList.add('control--many-options');
-    }
     buildOptions(control, wrapper);
   }
 
@@ -318,9 +433,14 @@ function buildInterface() {
 }
 
 function setControlValue(name, value) {
-  state[name] = value;
   const control = controls.find((item) => item.name === name);
-  control?.update?.(value);
+  if (!control) return;
+
+  const nextValue = ['knob', 'fader'].includes(control.type)
+    ? normalizeNumericValue(control, value)
+    : value;
+  state[name] = nextValue;
+  control.update?.(nextValue);
   persist();
 }
 
@@ -344,11 +464,17 @@ function applyPatch(patch) {
 
     if (control.type === 'select') {
       if (!control.values.includes(value)) value = defaults[control.name];
+    } else if (control.type === 'multiselect') {
+      // Les anciens patches peuvent ne pas contenir ce paramètre.
+      // Ignorer les valeurs inconnues et éviter les doublons.
+      value = Array.isArray(value)
+        ? control.values.filter((option) => value.includes(option))
+        : defaults[control.name];
     } else if (control.type === 'toggle') {
       value = value === true;
     } else {
-      value = Number(value);
-      value = Number.isFinite(value) ? clamp(value) : 0;
+      // Réutilise le défaut du template pour les paramètres absents ou invalides.
+      value = normalizeNumericValue(control, value);
     }
 
     state[control.name] = value;
@@ -393,7 +519,7 @@ function downloadJson(data, filename) {
 function createSlug(value) {
   return value.toLowerCase()
     .normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '') || 'patch';
 }
@@ -643,8 +769,7 @@ async function loadSynths() {
   synths = validateSynths(await response.json());
   populateSynthPicker();
 
-  // Conserver le Donner Essential L1 comme modèle initial si présent,
-  // sinon sélectionner le premier synthétiseur du fichier JSON.
+  // Sélectionner le premier synthétiseur déclaré dans le catalogue.
   currentSynth = synths[0];
   elements.synthSelect.value = currentSynth.id;
 
