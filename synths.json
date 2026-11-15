@@ -1,0 +1,325 @@
+[
+  {
+    "id": "donner_essential_b1",
+    "name": "Donner Essential B1",
+    "template": [
+      {
+        "title": "Wave",
+        "controls": [
+          {
+            "name": "vco_wave",
+            "display_name": "Waveform",
+            "type": "select",
+            "values": ["Saw", "Square"]
+          }
+        ]
+      },
+      {
+        "title": "VCO",
+        "controls": [
+          {
+            "name": "vco_pitch",
+            "display_name": "Pitch",
+            "type": "knob",
+            "values": []
+          }
+        ]
+      },
+      {
+        "title": "Filter",
+        "controls": [
+          {
+            "name": "filter_cutoff",
+            "display_name": "Cut off",
+            "type": "knob",
+            "values": []
+          },
+          {
+            "name": "filter_resonance",
+            "display_name": "Resonance",
+            "type": "knob",
+            "values": []
+          },
+          {
+            "name": "filter_depth",
+            "display_name": "Depth",
+            "type": "knob",
+            "values": []
+          }
+        ]
+      }
+    ]
+  },
+{
+    "id": "donner_essential_l1",
+    "name": "Donner Essential L1",
+    "template": [
+      {
+        "title": "Glide",
+        "controls": [
+          {
+            "name": "glide_mode",
+            "display_name": "Mode",
+            "type": "select",
+            "values": [
+              "Off",
+              "On",
+              "Auto"
+            ]
+          },
+          {
+            "name": "glide_speed",
+            "display_name": "Speed",
+            "type": "knob",
+            "values": []
+          }
+        ]
+      },
+      {
+        "title": "Modulator",
+        "controls": [
+          {
+            "name": "lfo_wave",
+            "display_name": "Waveform",
+            "type": "select",
+            "values": [
+              "Triangle",
+              "Carré",
+              "Random",
+              "Noise"
+            ]
+          },
+          {
+            "name": "lfo_rate",
+            "display_name": "LFO rate",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "lfo_audio",
+            "display_name": "Audio rate",
+            "type": "toggle",
+            "values": []
+          },
+          {
+            "name": "lfo_sync",
+            "display_name": "Sync horloge",
+            "type": "toggle",
+            "values": []
+          }
+        ]
+      },
+      {
+        "title": "VCO",
+        "controls": [
+          {
+            "name": "vco_pitch_lfo",
+            "display_name": "Pitch mod (LFO)",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "vco_range",
+            "display_name": "Range",
+            "type": "select",
+            "values": [
+              "16'",
+              "8'",
+              "4'",
+              "2'"
+            ],
+            "inline": true
+          },
+          {
+            "name": "vco_pitch_env",
+            "display_name": "Pitch mod (ENV1)",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "vco_pwm_mod",
+            "display_name": "PWM mod",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "vco_pwm_src",
+            "display_name": "PWM source",
+            "type": "select",
+            "values": [
+              "LFO",
+              "Man",
+              "ENV1"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Source mixer",
+        "controls": [
+          {
+            "name": "mix_sub_range",
+            "display_name": "Sub range",
+            "type": "select",
+            "values": [
+              "-1 oct carré",
+              "-2 oct carré",
+              "-2 oct impulsion"
+            ]
+          },
+          {
+            "name": "mix_sub",
+            "display_name": "Sub",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "mix_sq",
+            "display_name": "Carré",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "mix_saw",
+            "display_name": "Dent de scie",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "mix_tri",
+            "display_name": "Triangle",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "mix_noise",
+            "display_name": "Noise",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "mix_ext",
+            "display_name": "Ext. in",
+            "type": "fader",
+            "values": []
+          }
+        ]
+      },
+      {
+        "title": "VCF",
+        "controls": [
+          {
+            "name": "vcf_freq",
+            "display_name": "Freq",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "vcf_res",
+            "display_name": "Res",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "vcf_env1",
+            "display_name": "ENV 1",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "vcf_lfo",
+            "display_name": "LFO",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "vcf_kybd",
+            "display_name": "Kybd",
+            "type": "fader",
+            "values": []
+          }
+        ]
+      },
+      {
+        "title": "ENV 1",
+        "controls": [
+          {
+            "name": "env1_a",
+            "display_name": "Attack",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "env1_d",
+            "display_name": "Decay",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "env1_s",
+            "display_name": "Sustain",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "env1_r",
+            "display_name": "Release",
+            "type": "fader",
+            "values": []
+          }
+        ]
+      },
+      {
+        "title": "ENV 2",
+        "controls": [
+          {
+            "name": "env2_a",
+            "display_name": "Attack",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "env2_d",
+            "display_name": "Decay",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "env2_s",
+            "display_name": "Sustain",
+            "type": "fader",
+            "values": []
+          },
+          {
+            "name": "env2_r",
+            "display_name": "Release",
+            "type": "fader",
+            "values": []
+          }
+        ]
+      },
+      {
+        "title": "VCA",
+        "controls": [
+          {
+            "name": "vca_mode",
+            "display_name": "Mode",
+            "type": "select",
+            "values": [
+              "ENV 2",
+              "Gate",
+              "Cycle",
+              "Drone"
+            ]
+          },
+          {
+            "name": "vca_volume",
+            "display_name": "Volume",
+            "type": "knob",
+            "values": []
+          }
+        ]
+      }
+    ]
+  }
+]

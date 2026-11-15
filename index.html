@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#cfd5d9">
+  <title>Patch keeper – Multi-synthés</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <h1>Patch keeper</h1>
+
+    <label class="synth-picker">
+      <span>Synthétiseur</span>
+      <select id="synthSelect" disabled>
+        <option value="">Chargement des synthétiseurs…</option>
+      </select>
+    </label>
+
+    <input id="name" type="text" placeholder="Nom du patch" aria-label="Nom du patch">
+    <input id="notes" type="text" placeholder="Notes (style, usage, réglages hors panneau…)" aria-label="Notes">
+
+    <button class="button button--primary" id="save" type="button">Télécharger le patch (.json)</button>
+    <button class="button" id="reset" type="button">Remettre à zéro</button>
+  </header>
+
+  <main class="layout">
+    <div id="synth" class="synth" aria-label="Réglages du synthétiseur"></div>
+
+    <aside class="bank-panel">
+      <h2>Banque</h2>
+      <ul id="bank" class="bank-list"></ul>
+      <div class="side-actions">
+        <button class="button" id="add" type="button">Ajouter le patch à la banque</button>
+        <button class="button" id="exportBank" type="button">Télécharger la banque (.json)</button>
+        <label class="button file-button">
+          Ouvrir un fichier .json
+          <input id="file" type="file" accept=".json,application/json" multiple hidden>
+        </label>
+      </div>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
