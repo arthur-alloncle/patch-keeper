@@ -82,6 +82,11 @@ function persist() {
 function createDefaultState(templateControls) {
   return Object.fromEntries(templateControls.map((control) => {
     if (control.type === 'select') return [control.name, control.values[0]];
+    if (control.type === 'multiselect') {
+      // Chaque option est désactivée par défaut, sauf si un tableau default est fourni.
+      const selected = Array.isArray(control.default) ? control.default : [];
+      return [control.name, control.values.filter((value) => selected.includes(value))];
+    }
     if (control.type === 'toggle') return [control.name, false];
     return [control.name, 0];
   }));
@@ -125,12 +130,20 @@ function validateSynths(data) {
         }
         controlNames.add(control.name);
 
-        if (!['knob', 'fader', 'select', 'toggle'].includes(control.type)) {
+        if (!['knob', 'fader', 'select', 'multiselect', 'toggle'].includes(control.type)) {
           throw new Error(`Type "${control.type}" non reconnu pour ${control.name}.`);
         }
-        if (control.type === 'select' &&
-            (!Array.isArray(control.values) || control.values.length === 0)) {
-          throw new Error(`Le contrôle select "${control.name}" doit avoir au moins une valeur.`);
+        if (['select', 'multiselect'].includes(control.type)) {
+          if (!Array.isArray(control.values) || control.values.length === 0 ||
+              control.values.some((value) => typeof value !== 'string') ||
+              new Set(control.values).size !== control.values.length) {
+            throw new Error(`Le contrôle ${control.type} "${control.name}" doit proposer des chaînes uniques dans values.`);
+          }
+        }
+        if (control.type === 'multiselect' && control.default !== undefined &&
+            (!Array.isArray(control.default) ||
+             control.default.some((value) => !control.values.includes(value)))) {
+          throw new Error(`Le défaut du multiselect "${control.name}" doit être un tableau de valeurs autorisées.`);
         }
       });
     });
@@ -250,25 +263,43 @@ function buildKnob(control, wrapper, valueElement) {
 }
 
 function buildOptions(control, wrapper) {
+  const isMultiple = control.type === 'multiselect';
   const values = control.type === 'toggle'
     ? [['Off', false], ['On', true]]
     : control.values.map((value) => [value, value]);
 
-  const optionsElement = createElement('div', 'options');
+  const optionsElement = createElement('div',
+    `options${control.inline ? ' options--inline' : ''}`);
+  optionsElement.setAttribute('role', 'group');
+  optionsElement.setAttribute('aria-label', control.display_name || control.name);
   const buttons = [];
 
   values.forEach(([label, value]) => {
     const button = createElement('button', '', label);
     button.type = 'button';
     button.setAttribute('aria-pressed', 'false');
-    button.addEventListener('click', () => setControlValue(control.name, value));
+    button.addEventListener('click', () => {
+      if (!isMultiple) {
+        setControlValue(control.name, value);
+        return;
+      }
+
+      const selected = state[control.name];
+      const nextValues = selected.includes(value)
+        ? selected.filter((item) => item !== value)
+        : [...selected, value];
+      // Conserver un ordre stable pour le JSON, quel que soit l'ordre des clics.
+      setControlValue(control.name,
+        control.values.filter((item) => nextValues.includes(item)));
+    });
     buttons.push({ button, value });
     optionsElement.append(button);
   });
 
   control.update = (value) => {
     buttons.forEach(({ button, value: optionValue }) => {
-      button.setAttribute('aria-pressed', String(optionValue === value));
+      const pressed = isMultiple ? value.includes(optionValue) : optionValue === value;
+      button.setAttribute('aria-pressed', String(pressed));
     });
   };
 
@@ -285,10 +316,6 @@ function buildControl(control) {
   } else if (control.type === 'knob') {
     buildKnob(control, wrapper, value);
   } else {
-    if (control.type === 'select' && control.values.length > 2) {
-      // Le groupe de boutons reste volontairement cohérent avec l'interface existante.
-      wrapper.classList.add('control--many-options');
-    }
     buildOptions(control, wrapper);
   }
 
@@ -344,6 +371,12 @@ function applyPatch(patch) {
 
     if (control.type === 'select') {
       if (!control.values.includes(value)) value = defaults[control.name];
+    } else if (control.type === 'multiselect') {
+      // Les anciens patches peuvent ne pas contenir ce paramètre.
+      // Ignorer les valeurs inconnues et éviter les doublons.
+      value = Array.isArray(value)
+        ? control.values.filter((option) => value.includes(option))
+        : defaults[control.name];
     } else if (control.type === 'toggle') {
       value = value === true;
     } else {
@@ -393,7 +426,7 @@ function downloadJson(data, filename) {
 function createSlug(value) {
   return value.toLowerCase()
     .normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '') || 'patch';
 }
