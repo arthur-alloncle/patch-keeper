@@ -53,39 +53,6 @@ Chaque `name` de contrôle doit être unique à l'intérieur du template d'un sy
 
 Chaque patch exporté contient `synth_id`. Les patches sans cet identifiant ou associés à un autre synthétiseur sont refusés à l'import et au rappel depuis la banque.
 
-## Multiselect
-
-Un contrôle multiselect reprend le format d'un `select`, mais mémorise **un tableau** de choix dans `params` :
-
-```json
-{
-  "name": "active_waves",
-  "display_name": "Oscillateurs actifs",
-  "type": "multiselect",
-  "values": ["Saw", "Square", "Triangle", "Noise"],
-  "default": ["Saw", "Square"],
-  "inline": true
-}
-```
-
-- `values` : liste obligatoire des choix (chaînes distinctes).
-- `default` : optionnel ; tableau des choix activés à la remise à zéro. Par défaut `[]`.
-- `inline` : optionnel ; affiche les boutons sur plusieurs colonnes/lignes compactes.
-- Cliquer sur un bouton active ou désactive ce choix sans changer les autres.
-- Les patches enregistrent, par exemple, `"active_waves": ["Saw", "Square"]`.
-- En important un patch, les choix invalides sont ignorés, et les valeurs du patch manquantes sont remplacées par la valeur par défaut.
-
-Le fichier `exemple_synthe_multiselect.json` contient un synthétiseur complet à copier, au besoin, dans le tableau `synths.json`. Il n'est **pas** chargé automatiquement.
-
-## Autres types envisageables (non implémentés)
-
-- `number` : saisie numérique précise (fréquence, BPM, valeur MIDI, etc.).
-- `stepper` : valeur discrète avec boutons moins/plus, pour octaves ou divisions.
-- `xy` : deux paramètres pilotés dans une surface bidimensionnelle.
-- `display` : valeur ou indication non modifiable (utile pour documentation et repérage).
-
-Les réglages bipolaires sont déjà possibles grâce aux propriétés numériques ci-dessous : **aucun type `bipolar` n'est nécessaire**.
-
 ## Propriétés numériques (`knob` et `fader`)
 
 Ces propriétés sont toutes facultatives et ne concernent que `knob` et `fader` :
